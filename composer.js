@@ -33,7 +33,7 @@ async function generateFinalCollage(sessionID, photoFilenames) {
         // 3. 準備合成層
         const layers = [];
 
-        // A. 放入照片 (自動置中)
+        // A. 放入照片 (中央裁剪至 slot 尺寸，確保遮罩能正確蓋住)
         for (let i = 0; i < photoPaths.length; i++) {
             const slot = layout.photo_slots[i];
             if (!fs.existsSync(photoPaths[i])) {
@@ -42,13 +42,25 @@ async function generateFinalCollage(sessionID, photoFilenames) {
             }
 
             const metadata = await sharp(photoPaths[i]).metadata();
-            const autoBleedY = Math.round((slot.h - metadata.height) / 2);
-            const autoBleedX = Math.round((slot.w - metadata.width) / 2);
+
+            // 中央裁剪至 slot 尺寸
+            const offsetX = Math.max(0, Math.round((metadata.width - slot.w) / 2));
+            const offsetY = Math.max(0, Math.round((metadata.height - slot.h) / 2));
+
+            const croppedPhoto = await sharp(photoPaths[i])
+                .extract({
+                    left: offsetX,
+                    top: offsetY,
+                    width: Math.min(slot.w, metadata.width - offsetX),
+                    height: Math.min(slot.h, metadata.height - offsetY)
+                })
+                .resize(slot.w, slot.h, { fit: 'fill' })
+                .toBuffer();
 
             layers.push({
-                input: photoPaths[i],
-                top: slot.y + autoBleedY,
-                left: slot.x + autoBleedX
+                input: croppedPhoto,
+                top: slot.y,
+                left: slot.x
             });
         }
 
