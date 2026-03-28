@@ -4,10 +4,19 @@ const path = require('path');
 const axios = require('axios');
 
 export default async function handler(req, res) {
+    if (req.url.startsWith('/deploy-info')) {
+        const html = fs.readFileSync(
+            path.join(process.cwd(), 'deploy-info.html'),
+            'utf-8'
+        );
+        res.setHeader('Content-Type', 'text/html');
+        return res.status(200).send(html);
+    }
+
     const { id } = req.query;
     const baseUrl = `https://${req.headers.host}`;
     const supabaseImgUrl = `https://ideczmuynbnfkonausvj.supabase.co/storage/v1/object/public/photos/${id}.jpg`;
-    const placeholderImg = `${baseUrl}/placeholder.jpg`; 
+    const placeholderImg = `${baseUrl}/placeholder.jpg`;
 
     let ogImage = placeholderImg;
     let title = "Cyber Booth | 數位拍貼系統";

@@ -2,14 +2,18 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
-console.log(process.env.SUPABASE_URL)
-const supabase = createClient(
-    process.env.SUPABASE_URL, 
-    process.env.SUPABASE_SERVICE_ROLE_KEY 
-);
+const isCloudConfigured = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabase = isCloudConfigured 
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY) 
+    : null;
+
 const VERCEL_DOMAIN = "https://cyber-booth.vercel.app/";
 
 async function uploadImage(sessionID, buffer) {
+    if (!isCloudConfigured) {
+        return `${VERCEL_DOMAIN}deploy-info`;
+    }
     try {
         const fileName = `${sessionID}.jpg`;
 

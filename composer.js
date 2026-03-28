@@ -21,7 +21,7 @@ async function generateFinalCollage(sessionID, photoFilenames) {
         console.log(`[Composer] Processing session: ${sessionID}`);
 
         // 1. 設定 QR Code 內容 (活動官網)
-        const officialWebsiteUrl = "https://club.cksc.tw/";
+        const officialWebsiteUrl = "https://club.cksc.tw/"; //也可依據 sessionID 動態配置
         const currentDate = dayjs().format('YYYY.MM.DD');
 
         // 2. 生成 QR Code Buffer
@@ -91,7 +91,7 @@ async function generateFinalCollage(sessionID, photoFilenames) {
             }
             else if (widget.type === 'image') {
                 let imgBuffer;
-                if (widget.content === '{QR_URL}') {
+                if (widget.content === '{QR_Code}') {
                     imgBuffer = await sharp(qrBuffer).resize(widget.w, widget.h).toBuffer();
                 } else {
                     // 一般圖片 Widget (如 Logo)，轉為 Buffer 並縮放

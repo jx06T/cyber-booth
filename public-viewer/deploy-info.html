@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deployment Required | Cyber Booth</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-[#050505] text-gray-400 font-mono min-h-screen flex flex-col items-center justify-center p-8 text-center">
+    
+    <div class="max-w-md border border-pink-500/30 p-10 rounded-[2rem] bg-gray-900/20 backdrop-blur-xl shadow-[0_0_30px_rgba(236,72,153,0.1)]">
+        <div class="text-pink-500 text-5xl mb-6">◩</div>
+        <h1 class="text-white text-xl font-bold mb-4 uppercase tracking-widest">Private Cloud Required</h1>
+        
+        <div class="space-y-4 text-sm leading-relaxed mb-8">
+            <p>此環境尚未配置 <span class="text-pink-400">Supabase</span> 雲端環境變數。</p>
+            <p class="text-gray-500">為了保護隱私，本系統採用「私有雲端」架構。若要啟用手機掃描領圖功能，您必須配置自己的儲存空間。</p>
+        </div>
+
+        <div class="bg-black/50 p-4 rounded-xl border border-gray-800 text-left mb-8">
+            <p class="text-xs text-gray-300 mb-2 uppercase tracking-widest">How to Fix:</p>
+            <ol class="text-xs space-y-2 text-gray-400">
+                <li>1. 參考本專案 GitHub <span class="text-gray-300 font-bold">README.md</span> 提供之詳細說明</li>
+                <li>2. 建立 Supabase Project 並開啟 Storage</li>
+                <li>3. 在本地 .env 填入對應的 URL 與 SERVICE_ROLE_KEY</li>
+            </ol>
+        </div>
+
+        <a href="https://github.com/jx06T/cyber-booth" target="_blank" 
+           class="inline-block bg-white text-black text-xs font-bold px-8 py-3 rounded-full hover:bg-pink-500 hover:text-white transition-all">
+            VIEW README ON GITHUB
+        </a>
+    </div>
+
+    <footer class="mt-8 text-[10px] text-gray-600 uppercase tracking-widest">
+        Cyber Booth System v3.3.0
+    </footer>
+</body>
+</html>
