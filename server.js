@@ -73,14 +73,11 @@ io.on('connection', (socket) => {
             io.emit('status_update', { message: 'Processing final collage...', kept: 4, state: 1 });
             console.log('Session complete. List:', selectedPhotos);
             try {
-                // 執行合成與上傳
                 const result = await generateFinalCollage(currentSessionID, selectedPhotos);
-
-                // 告訴前端完成，並傳送下載 URL 供生成 QR Code
                 io.emit('status_update', {
                     message: 'Finished',
                     state: 5,
-                    finalUrl: result.publicUrl
+                    result: result
                 });
             } catch (e) {
                 io.emit('status_update', { message: 'Composition Failed', state: 2 });
