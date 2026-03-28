@@ -4,10 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyber Booth MVP</title>
+    <title>Cyber Booth</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
         .loader {
             border: 3px solid rgba(255, 255, 255, 0.1);
@@ -49,6 +50,12 @@
 
 <body class="bg-gray-950 h-screen flex flex-col items-center justify-center text-white font-mono p-4">
 
+    <!-- 右上角 GitHub 連結 -->
+    <a href="https://github.com/jx06T/cyber-booth" target="_blank" class="fixed top-4 right-6 flex items-center gap-2 text-gray-400 hover:text-pink-500 transition-colors text-xs uppercase tracking-widest pointer-events-auto">
+        <i class="fa-brands fa-github text-sm"></i>
+        <span>v1.0.2 - jx06T</span>
+    </a>
+
     <!-- 狀態五：結果展示區域 -->
     <section id="sec-result" class="hidden w-full max-w-5xl flex flex-col items-center animate-in fade-in duration-700 h-[96%]">
         <div class="flex gap-8 w-full items-center h-full">
@@ -84,12 +91,12 @@
             </div>
             <div class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4">
                 <div class="flex justify-between items-start">
-                    <div class="bg-black/50 backdrop-blur-md border border-pink-500/50 px-3 py-1 rounded flex items-center gap-1">
-                        <span class="text-xs text-pink-400">◩</span>
-                        <span id="txt-status" class="text-sm">READY</span>
+                    <div class="bg-black/50 backdrop-blur-md border border-pink-500/50 px-3 py-1 rounded flex items-center gap-1 h-full">
+                        <span class="text-xs text-pink-400 h-full">◩</span>
+                        <span id="txt-status" class="text-sm h-full">READY</span>
                     </div>
-                    <div class="bg-black/50 backdrop-blur-md border border-pink-500/50 px-3 py-1 rounded text-sm">
-                        SHOTS: <span id="txt-progress" class="text-pink-500">0/4</span>
+                    <div class="bg-black/50 backdrop-blur-md border border-pink-500/50 px-3 py-1 rounded text-sm h-full">
+                        SHOTS: <span id="txt-progress" class="text-pink-500 h-full">0/4</span>
                     </div>
                 </div>
                 <div id="div-rec" class="hidden">
@@ -233,10 +240,9 @@
             if (data.state === 5) {
                 el.secCapture.classList.add('hidden');
                 el.secResult.classList.remove('hidden');
-                el.imgFinal.src = `${data.finalUrl}?t=${Date.now()}`;
+                el.imgFinal.src = `${data.result.localPath}?t=${Date.now()}`;
                 
-                // 更新 QR Code 指向圖片下載路徑 (需加上完整的 Origin)
-                const downloadLink = window.location.origin + data.finalUrl;
+                const downloadLink = data.result.publicUrl;
                 qr.set({ value: downloadLink });
                 
                 return;

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cyber Booth | Digital Collage Tool</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
         body { background: #050505; color: white; font-family: monospace; }
         .cyber-border { border: 1px solid #ec4899; box-shadow: 0 0 15px rgba(236, 72, 153, 0.3); }
@@ -16,6 +17,11 @@
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+
+    <a href="https://github.com/jx06T/cyber-booth" target="_blank" class="fixed top-4 right-6 flex items-center gap-2 text-gray-400 hover:text-pink-500 transition-colors text-xs uppercase tracking-widest pointer-events-auto">
+        <i class="fa-brands fa-github text-sm"></i>
+        <span>v1.0.2 - jx06T</span>
+    </a>
 
     <!-- 1. 首頁狀態 (Landing Page) -->
     <section id="sec-home" class="active flex-col items-center max-w-lg">
@@ -31,7 +37,7 @@
             <a href="https://club.cksc.tw/" target="_blank" class="w-full py-3.5 bg-white text-black font-bold rounded-full hover:bg-pink-500 hover:text-white transition-all">
                 VISIT OFFICIAL WEBSITE
             </a>
-            <a href="https://github.com/your-repo/cyber-booth" target="_blank" class="text-gray-400 text-xs hover:text-white transition-colors mt-2">
+            <a href="https://github.com/jx06T/cyber-booth" target="_blank" class="text-gray-400 text-xs hover:text-white transition-colors mt-2">
                 [ VIEW SOURCE CODE ON GITHUB ]
             </a>
         </div>
@@ -46,31 +52,31 @@
     <!-- 3. 下載預覽狀態 (Main Content) -->
     <section id="sec-main" class="flex-col items-center w-full max-w-sm">
         <header class="mb-4">
-            <h2 class="text-pink-500 font-bold text-xl tracking-tighter neon-text">YOUR MOMENT</h2>
-            <p class="text-[10px] text-gray-500 uppercase">Collage ID: <span id="txt-session-id" class="text-gray-300"></span></p>
+            <h2 class="text-pink-500 font-bold text-2xl tracking-tighter neon-text">YOUR MOMENT</h2>
+            <p class="text-xs text-gray-500 uppercase">Collage ID: <span id="txt-session-id" class="text-gray-300"></span></p>
         </header>
 
-        <div class="cyber-border rounded-lg overflow-hidden bg-black mb-6 w-full">
+        <div class=" rounded-md overflow-hidden bg-black mb-6 w-full">
             <img id="img-display" src="" alt="Your Collage">
         </div>
 
-        <button id="btn-download" class="w-full bg-pink-600 hover:bg-pink-500 text-white py-4 rounded-full font-bold transition-all shadow-lg shadow-pink-500/20 mb-6">
+        <button id="btn-download" class="w-full bg-pink-600 hover:bg-pink-500 text-white py-3 rounded-full font-bold transition-all shadow-lg text-lg shadow-pink-500/20 mb-6">
             DOWNLOAD IMAGE
         </button>
         
         <div class="flex flex-col gap-2">
-            <p class="text-[10px] text-gray-600 uppercase">Image will be auto-deleted in 24 hours</p>
-            <a href="/" class="text-gray-500 text-[10px] underline hover:text-white uppercase tracking-widest">Back to info</a>
+            <p class="text-xs text-gray-600 uppercase">Image will be auto-deleted in 24 hours</p>
+            <a href="/" class="text-gray-500 text-xs underline hover:text-white uppercase tracking-widest">Back to HOME</a>
         </div>
     </section>
 
     <!-- 4. 錯誤狀態 (Error / Expired) -->
     <section id="sec-error" class="flex-col items-center">
-        <h1 class="text-6xl font-black text-gray-800 mb-4">404</h1>
+        <h1 class="text-8xl font-black text-gray-500">404</h1>
         <div class="mb-8">
-            <p class="text-pink-400 font-bold mb-2">IMAGE NOT FOUND</p>
-            <p class="text-gray-500 text-xs leading-loose px-8">
-                這張照片可能已經因為超過 <span class="text-gray-300">24 小時</span> 而被系統自動刪除，<br>請確認網址正確或詢問管理人員。
+            <p class="text-pink-400 font-bold mb-4 text-lg">IMAGE NOT FOUND</p>
+            <p class="text-gray-400 text-sm leading-loose px-8">
+                這張照片可能已超過 <span class="text-gray-300">24 小時</span> 下載期限而被系統自動刪除，<br>請確認網址正確或詢問管理人員。
             </p>
         </div>
         <a href="/" class="border border-gray-700 text-gray-400 px-8 py-3 rounded-full text-xs hover:bg-gray-800 hover:text-white transition-all">
@@ -81,7 +87,7 @@
     <script>
         // --- 配置區域 ---
         // 替換為你的 Supabase Project ID
-        const SUPABASE_STORAGE_URL = "https://YOUR_PROJECT_ID.supabase.co/storage/v1/object/public/photos";
+        const SUPABASE_STORAGE_URL = "https://ideczmuynbnfkonausvj.supabase.co/storage/v1/object/public/photos";
         
         const params = new URLSearchParams(window.location.search);
         const sessionId = params.get('id');

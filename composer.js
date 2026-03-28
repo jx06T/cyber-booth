@@ -118,8 +118,14 @@ async function generateFinalCollage(sessionID, photoFilenames) {
         // 6. 取得 Buffer 並呼叫上傳組件
         const finalBuffer = await finalImage.toBuffer();
         const publicUrl = await uploadImage(sessionID, finalBuffer);
-        
-        return publicUrl;
+
+        // 相對路徑供外部引用
+        const relativePath = `sessions/${sessionID}/collage.jpg`;
+
+        return {
+            publicUrl: publicUrl,
+            localPath: relativePath
+        };
 
     } catch (err) {
         console.error('[Composer] Failed:', err);

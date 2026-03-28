@@ -17,31 +17,30 @@ let currentSessionID = "";
 
 app.use(express.json());
 app.use('/sessions', express.static(path.join(__dirname, 'sessions')));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname, 'public'), {
-    etag: false,
-    lastModified: false,
-    setHeaders: (res) => {
-        res.set('Cache-Control', 'no-store');
+async function systemFullReset() {
+    console.log("--- 完全重置 ---");
+    selectedPhotos = [];
+    const randomStr = Math.random().toString(36).substring(2, 10);
+    currentSessionID = `ssn_${Date.now()}_${randomStr}`; // 時間戳 + 隨機字串，防止掃描
+
+    try {
+        // 通知 TD 停止所有動作並回到待機
+        await axios.post(`${TD_URL}/reset`, { sessionID: currentSessionID });
+        console.log("TD Reset Success");
+    } catch (e) {
+        console.error("TD Reset Failed (Is TD running?)");
     }
-}));
+}
 
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
 
     // Initialize session
     socket.on('user_clicked_start', async () => {
-        currentSessionID = `ssn_${Date.now()}`;
-        selectedPhotos = [];
-        console.log(`Starting session: ${currentSessionID}`);
-        try {
-            await axios.post(`${TD_URL}/start_session`, { sessionID: currentSessionID });
-        } catch (e) {
-            console.log("Error contacting TD:", e.message);
-        }
-        // 無論 TD 是否成功，都發送狀態
-        io.emit('status_update', { message: 'Ready', state: 2, kept: 0 });
+        await systemFullReset();
+        io.emit('status_update', { message: 'Ready for new session', state: 2, kept: 0 });
     });
 
     // User clicks TAKE PHOTO
@@ -57,7 +56,11 @@ io.on('connection', (socket) => {
     // User clicks STOP & SAVE
     socket.on('user_clicked_stop', async () => {
         console.log('Stop and save requested');
-        await axios.post(`${TD_URL}/stop_and_save`);
+        try {
+            await axios.post(`${TD_URL}/stop_and_save`);
+        } catch (e) {
+            console.error('TD error:', e.response?.status);
+        }
     });
 
     // User choice: KEEP
@@ -71,13 +74,13 @@ io.on('connection', (socket) => {
             console.log('Session complete. List:', selectedPhotos);
             try {
                 // 執行合成與上傳
-                const finalUrl = await generateFinalCollage(currentSessionID, selectedPhotos);
+                const result = await generateFinalCollage(currentSessionID, selectedPhotos);
 
                 // 告訴前端完成，並傳送下載 URL 供生成 QR Code
                 io.emit('status_update', {
                     message: 'Finished',
                     state: 5,
-                    finalUrl: finalUrl
+                    finalUrl: result.publicUrl
                 });
             } catch (e) {
                 io.emit('status_update', { message: 'Composition Failed', state: 2 });
@@ -103,8 +106,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('user_clicked_reset', async () => {
-        await axios.post(`${TD_URL}/reset`);
-        io.emit('status_update', { message: 'Reset done', state: 2, kept: 0 });
+        await systemFullReset();
+        io.emit('status_update', { message: 'System Reset Done', state: 2, kept: 0 });
     });
 
     socket.on('user_clicked_finish_early', async () => {
@@ -121,11 +124,11 @@ io.on('connection', (socket) => {
         }
 
         try {
-            const finalUrl = await generateFinalCollage(currentSessionID, selectedPhotos);
+            const result = await generateFinalCollage(currentSessionID, selectedPhotos);
             io.emit('status_update', {
                 message: 'Finished',
                 state: 5,
-                finalUrl: finalUrl
+                result: result
             });
         } catch (e) {
             console.error(e);

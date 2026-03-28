@@ -1,6 +1,7 @@
 import json
 import requests
 import os
+import time
 
 # Global variables for session management
 current_session_path = ""
@@ -48,22 +49,6 @@ def onHTTPRequest(webServerDAT, request, response):
         
         return response
     
-    # --- 1. Start Session  ---
-    if request['method'] == 'POST' and request['uri'] == '/start_session':
-        data = json.loads(request['data'])
-        session_id = data.get('sessionID', 'default')
-        
-        # Create unique folder for this session
-        current_session_path = f"{project.folder}/sessions/{session_id}"
-            
-        attempt_count = 0 # Reset attempt counter
-        op('state_holder').par.value0 = 2 # Set state to Idle
-        print(f"New session started: {session_id}")
-        
-        response['statusCode'] = 200
-        response['data'] = json.dumps({"message": "Session initialized"})
-        return response
-
     # --- 2. Start Countdown (2 -> 3) ---
     elif request['method'] == 'POST' and request['uri'] == '/start_countdown':
         print("Starting countdown sequence")
@@ -77,6 +62,7 @@ def onHTTPRequest(webServerDAT, request, response):
     elif request['method'] == 'POST' and request['uri'] == '/stop_and_save':
         op('state_holder').par.value0 = 1
 
+        print(current_session_path)
         if not os.path.exists(current_session_path):
             os.makedirs(current_session_path)
 
@@ -85,11 +71,10 @@ def onHTTPRequest(webServerDAT, request, response):
         filepath = f"{current_session_path}/{filename}"
         
         # Save current frame
-        op('final_render').save(filepath)
-        print(f"Saved attempt {attempt_count}: {filepath}")
+        run("me.module.do_delayed_save(args[0], args[1], args[2])", 
+            filepath, filename, attempt_count, delayFrames=2)
         
-        # Notify Node.js that a new file is ready for review
-        notify_preview(attempt_count, filename)
+        print(f"Saving scheduled in 2 frames...")
         
         response['statusCode'] = 200
         response['data'] = json.dumps({"filename": filename})
@@ -97,10 +82,27 @@ def onHTTPRequest(webServerDAT, request, response):
 
     # --- 4. System Reset ---
     elif request['method'] == 'POST' and request['uri'] == '/reset':
-        print("System reset requested")
+
+        try:
+            data = json.loads(request['data']) if request['data'] else {}
+            session_id = data.get('sessionID', 'default')
+        except:
+            session_id = 'error_default'
+        
+        # Create unique folder for this session
+        current_session_path = f"{project.folder}/sessions/{session_id}"
+        attempt_count = 0 
+        
         op('state_holder').par.value0 = 2
         op('timer_countdown').par.initialize.pulse()
+
+        print(f"System reset / New session started: {session_id}")
+        
         response['statusCode'] = 200
+        response['data'] = json.dumps({
+            "message": "Reset and Init done",
+            "path": current_session_path
+        })
         return response
 
     # --- 5. Ready for Next Attempt (Keep/Retake cleanup) ---
@@ -119,3 +121,11 @@ def notify_preview(index, filename):
         requests.post(url, json={'index': index, 'filename': filename})
     except:
         pass
+
+def do_delayed_save(filepath, filename, index):
+    # 這裡才是真正的存檔動作
+    op('final_render').save(filepath)
+    print(f"Delayed Save Done: {filepath}")
+    
+    # 存檔完成後，才發送 Webhook 通知 Node.js
+    notify_preview(index, filename)

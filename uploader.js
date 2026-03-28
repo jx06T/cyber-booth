@@ -1,13 +1,13 @@
 // uploader.js
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
-// 請在環境變數中設定這些值
+console.log(process.env.SUPABASE_URL)
 const supabase = createClient(
     process.env.SUPABASE_URL, 
-    process.env.SUPABASE_SERVICE_ROLE_KEY // 使用 Service Key 才有權限寫入
+    process.env.SUPABASE_SERVICE_ROLE_KEY 
 );
-
-const VERCEL_DOMAIN = "https://your-booth-web.vercel.app";
+const VERCEL_DOMAIN = "https://cyber-booth.vercel.app/";
 
 async function uploadImage(sessionID, buffer) {
     try {
@@ -30,8 +30,6 @@ async function uploadImage(sessionID, buffer) {
 
         if (dbError) throw dbError;
 
-        // 3. 回傳 Vercel 下載頁面的網址給 QR Code 使用
-        // 格式：https://xxx.vercel.app/?id=ssn_12345
         return `${VERCEL_DOMAIN}/?id=${sessionID}`;
 
     } catch (err) {
