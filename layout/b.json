@@ -1,0 +1,29 @@
+{
+  "name": "Cyber_Booth_Standard",
+  "canvas": { "w": 1500, "h": 4000, "bg": "#000000" },
+  "overlay_path": "./layout/b.png",
+  "photo_slots": [
+    { "x": 110, "y": 120, "w": 1280, "h": 720 },
+    { "x": 110, "y": 940, "w": 1280, "h": 720 },
+    { "x": 110, "y": 1760, "w": 1280, "h": 720 },
+    { "x": 110, "y": 2580, "w": 1280, "h": 720 }
+  ],
+  "widgets": [
+    {
+      "id": "date_display",
+      "type": "text",
+      "content": "{CURRENT_DATE}",
+      "x": 990, "y": 3800,
+      "fontSize": 64,
+      "color": "#FFFFFF",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "session_qr",
+      "type": "image",
+      "content": "{QR_URL}",
+      "x": 110, "y": 3700,
+      "w": 200, "h": 200
+    }
+  ]
+}

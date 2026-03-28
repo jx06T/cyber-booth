@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cyber Booth MVP</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
-        /* 基礎載入動畫 */
         .loader {
             border: 3px solid rgba(255, 255, 255, 0.1);
             border-top: 3px solid #ec4899;
@@ -17,12 +17,12 @@
             height: 40px;
             animation: spin 1s linear infinite;
         }
+
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        /* 影片裁切核心：確保 1280x1280 裁切成 16:9 */
-        .video-container {
+
+        .div-container {
             width: 100%;
-            max-width: 1000px; /* 控制螢幕最大寬度 */
+            max-width: 990px;
             aspect-ratio: 16 / 9;
             background: #000;
             position: relative;
@@ -30,92 +30,105 @@
             border: 1px solid rgba(236, 72, 153, 0.3);
             border-radius: 12px;
         }
-        video {
+
+        #vid-webcam {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* 關鍵：裁切上下部分 */
-            transform: scale(2);
+            object-fit: cover;
+            transform: scale(1.8);
+        }
+
+        #img-final {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #111;
         }
     </style>
 </head>
 
 <body class="bg-gray-950 h-screen flex flex-col items-center justify-center text-white font-mono p-4">
 
-    <!-- 1. 頂部狀態列 (懸浮在影片上方) -->
-    <div class="video-container shadow-2xl ">
-        
-        <!-- 影片本體 -->
-        <video id="webcam" autoplay playsinline></video>
-
-        <!-- 載入中遮罩 -->
-        <div id="loading-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 z-10">
-            <div class="loader mb-4"></div>
-            <p class="text-xs text-pink-500 uppercase tracking-widest">Initializing Stream</p>
-        </div>
-
-        <!-- 影片上的資訊 Overlay -->
-        <div class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4">
-            <div class="flex justify-between items-start">
-                <div class="bg-black/50 backdrop-blur-md border border-pink-500/50 px-3 py-1 rounded">
-                    <span class="text-xs text-pink-400">●</span>
-                    <span id="statusText" class="text-sm">READY</span>
-                </div>
-                <div class="bg-black/50 backdrop-blur-md border border-gray-500/50 px-3 py-1 rounded text-sm">
-                    SHOTS: <span id="progress" class="text-pink-500">0/4</span>
-                </div>
+    <!-- 狀態五：結果展示區域 -->
+    <section id="sec-result" class="hidden w-full max-w-5xl flex flex-col items-center animate-in fade-in duration-700 h-[96%]">
+        <div class="flex gap-8 w-full items-center h-full">
+            <div class="div-container h-full flex-1 shadow-2xl border-pink-500/50">
+                <img id="img-final" src="" alt="Final Collage">
             </div>
-            
-            <!-- 錄製中紅點 -->
-            <div id="rec-indicator" class="hidden">
-                <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
-                    <span class="text-xs font-bold text-red-500 shadow-sm">RECORDING</span>
+
+            <div class="w-64 flex flex-col justify-between py-4 max-h-96 gap-y-4">
+                <div class="text-center">
+                    <h2 class="text-pink-500 font-bold text-xl mb-2">COMPLETE!</h2>
+                    <p class="text-gray-400 text-xs uppercase tracking-tighter leading-tight">Scan to download your image</p>
                 </div>
+
+                <!-- 這裡的 QR Code 會動態指向圖片網址 -->
+                <div class="bg-white p-3 rounded-xl self-center shadow-lg shadow-pink-500/20">
+                    <canvas id="cvs-qr"></canvas>
+                </div>
+
+                <button id="btn-restart" class="border border-white/20 hover:border-pink-500 py-3 rounded-full text-sm transition-all hover:bg-pink-500/10 w-full">
+                    START NEW
+                </button>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- 2. 下方控制區 -->
-    <div id="ui-box" class="mt-6 w-full max-w-lg h-20">
-        
-        <!-- State 2: IDLE -->
-        <div id="idle-ui" class="flex justify-center">
-            <button id="take-btn" disabled onclick="socket.emit('trigger_shot')"
-                class="group relative border border-pink-500 disabled:border-slate-500 px-12 py-4 rounded-full overflow-hidden transition-all  enabled:hover:bg-pink-500">
-                <span class="relative z-10 text-xl font-bold group-enabled:group-hover:text-black group-disabled:group-hover:text-white">Initializing...</span>
-            </button>
+    <!-- 拍攝階段區域 -->
+    <section id="sec-capture" class="w-full flex flex-col items-center">
+        <div class="div-container shadow-2xl">
+            <video id="vid-webcam" autoplay playsinline></video>
+            <div id="div-loading" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 z-10">
+                <div class="loader mb-4"></div>
+                <p class="text-xs text-pink-500 uppercase tracking-widest">Initializing Stream</p>
+            </div>
+            <div class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4">
+                <div class="flex justify-between items-start">
+                    <div class="bg-black/50 backdrop-blur-md border border-pink-500/50 px-3 py-1 rounded flex items-center gap-1">
+                        <span class="text-xs text-pink-400">◩</span>
+                        <span id="txt-status" class="text-sm">READY</span>
+                    </div>
+                    <div class="bg-black/50 backdrop-blur-md border border-pink-500/50 px-3 py-1 rounded text-sm">
+                        SHOTS: <span id="txt-progress" class="text-pink-500">0/4</span>
+                    </div>
+                </div>
+                <div id="div-rec" class="hidden">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
+                        <span class="text-xs font-bold text-red-500">RECORDING</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- State 0: RECORDING -->
-        <div id="rec-ui" class="hidden flex justify-center">
-            <button onclick="socket.emit('user_clicked_stop')"
-                class="bg-red-600 hover:bg-red-500 px-12 py-4 rounded-full text-xl font-bold animate-pulse transition-colors">
-                STOP & SAVE
-            </button>
-        </div>
-
-        <!-- State 4: REVIEW -->
-        <div id="review-ui" class="hidden">
-            <div class="flex flex-col items-center gap-4">
-                <!-- <p class="text-sm text-gray-400 uppercase tracking-widest">Review your shot</p> -->
+        <div id="div-ui-container" class="mt-6 w-full max-w-lg h-20">
+            <div id="ui-idle" class="flex justify-center">
+                <button id="btn-take" disabled class="group relative border border-pink-500 disabled:border-slate-700 disabled:text-slate-600 px-12 py-4 rounded-full transition-all enabled:hover:bg-pink-500 enabled:hover:text-black">
+                    <span class="relative z-10 text-xl font-bold uppercase">Initializing...</span>
+                </button>
+            </div>
+            <div id="ui-rec" class="hidden flex justify-center">
+                <button id="btn-stop" class="bg-red-600 hover:bg-red-500 px-12 py-4 rounded-full text-xl font-bold animate-pulse">STOP & SAVE</button>
+            </div>
+            <div id="ui-rev" class="hidden">
                 <div class="flex justify-center gap-4 w-full">
-                    <button id="keepBtn"
-                        class="flex-1 border border-green-500 text-green-500 py-4 rounded-xl font-bold hover:bg-green-500 hover:text-black transition-all">KEEP</button>
-                    <button onclick="socket.emit('choice_retake')"
-                        class="flex-1 border border-gray-600 text-gray-400 py-4 rounded-xl font-bold hover:bg-gray-600 hover:text-white transition-all">RETAKE</button>
+                    <button id="btn-keep" class="flex-1 border border-green-500 text-green-500 py-4 rounded-xl font-bold hover:bg-green-500 hover:text-black transition-all">KEEP</button>
+                    <button id="btn-retake" class="flex-1 border border-gray-600 text-gray-400 py-4 rounded-xl font-bold hover:bg-gray-600 transition-all">RETAKE</button>
                 </div>
             </div>
+            <div id="ui-fin" class="hidden text-center">
+                <p class="text-xl text-pink-400 animate-pulse font-bold">GENERATING COLLAGE...</p>
+            </div>
         </div>
+    </section>
 
-        <!-- State 1: FINISHED -->
-        <div id="final-ui" class="hidden text-center">
-            <p class="text-xl text-pink-400 animate-pulse font-bold tracking-tighter">GENERATING COLLAGE...</p>
-        </div>
-    </div>
-
-    <!-- 3. 系統重置 (縮小放置角落) -->
-    <div class="fixed bottom-6 right-6">
-        <button id="resetBtn" class="text-gray-400 hover:text-red-400 text-[10px] tracking-widest transition-colors uppercase">
+    <!-- 底部功能按鈕 -->
+    <div class="fixed bottom-6 w-full px-10 flex justify-between pointer-events-none">
+        <button id="btn-finish" class="hidden pointer-events-auto text-gray-500 hover:text-pink-400 text-[10px] uppercase tracking-widest transition-colors">
+            [ Finish with current shots ]
+        </button>
+        <span class="invisible">-</span>
+        <button id="btn-reset" class="pointer-events-auto text-gray-500 hover:text-red-400 text-[10px] uppercase tracking-widest transition-colors">
             [ Emergency Reset ]
         </button>
     </div>
@@ -123,64 +136,159 @@
     <script>
         const socket = io();
         let currentTempFile = "";
+        let isCameraReady = false; // 用於同步判斷按鈕狀態
 
-        const takeBtn = document.getElementById('take-btn');
-        const video = document.getElementById('webcam');
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const recIndicator = document.getElementById('rec-indicator');
+        // DOM Elements
+        const el = {
+            btnTake: document.getElementById('btn-take'),
+            btnStop: document.getElementById('btn-stop'),
+            btnKeep: document.getElementById('btn-keep'),
+            btnRetake: document.getElementById('btn-retake'),
+            btnFinish: document.getElementById('btn-finish'),
+            btnReset: document.getElementById('btn-reset'),
+            btnRestart: document.getElementById('btn-restart'),
+            vidWebcam: document.getElementById('vid-webcam'),
+            divLoading: document.getElementById('div-loading'),
+            divRec: document.getElementById('div-rec'),
+            secCapture: document.getElementById('sec-capture'),
+            secResult: document.getElementById('sec-result'),
+            imgFinal: document.getElementById('img-final'),
+            txtStatus: document.getElementById('txt-status'),
+            txtProgress: document.getElementById('txt-progress'),
+            uis: {
+                idle: document.getElementById('ui-idle'),
+                rec: document.getElementById('ui-rec'),
+                rev: document.getElementById('ui-rev'),
+                fin: document.getElementById('ui-fin')
+            }
+        };
 
-        // Start session on load
-        window.onload = () => socket.emit('user_clicked_start');
-
-        // 攝影機啟動邏輯
-        navigator.mediaDevices.getUserMedia({
-            video: { width: 1280, height: 1280 } // 原始輸入是 1:1
-        })
-        .then(stream => {
-            video.srcObject = stream;
-            video.onloadedmetadata = () => {
-                video.play();
-                loadingOverlay.classList.add('hidden'); // 隱藏載入動畫
-                takeBtn.disabled = false;
-                takeBtn.childNodes[1].textContent = "TAKE PHOTO";
-
-            };
-        })
-        .catch(err => {
-            console.error("Camera error:", err);
-            loadingOverlay.innerHTML = "<p class='text-red-500'>Camera Access Denied</p>";
+        // QR Code 初始化 (先不給值)
+        const qr = new QRious({
+            element: document.getElementById('cvs-qr'),
+            size: 200,
+            padding: 10,
+            level: 'H'
         });
 
-        const keepBtn = document.getElementById('keepBtn');
-        const resetBtn = document.getElementById('resetBtn');
+        // Initialization
+        window.addEventListener('load', () => {
+            el.btnTake.disabled = true; // 強制初始化時禁用
+            socket.emit('user_clicked_start');
+        });
 
-        keepBtn.onclick = () => socket.emit('choice_keep', { filename: currentTempFile });
-        resetBtn.onclick = () => socket.emit('user_clicked_reset');
+        // 攝影機啟動
+        navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 1280 } })
+            .then(stream => {
+                el.vidWebcam.srcObject = stream;
 
+                // 使用事件監聽器，確保觸發
+                el.vidWebcam.addEventListener('loadedmetadata', () => {
+                    console.log("Camera metadata loaded");
+                    el.vidWebcam.play();
+                    el.divLoading.classList.add('hidden');
+                    isCameraReady = true; // 攝影機標記為 Ready
+
+                    // 觸發狀態更新以檢查按鈕
+                    if (socket.connected) {
+                        socket.emit('user_clicked_start');
+                    }
+                }, { once: true }); // 只執行一次
+
+                // 備用方案：若 readyState 已是 HAVE_METADATA 就不等
+                if (el.vidWebcam.readyState >= 1) {
+                    el.vidWebcam.play();
+                    el.divLoading.classList.add('hidden');
+                    isCameraReady = true;
+                    console.log("Camera ready (readyState check)");
+                }
+            })
+            .catch(err => {
+                console.error("Camera error:", err);
+                el.divLoading.innerHTML = "<p class='text-red-500'>Camera Denied</p>";
+            });
+
+        // Unified Event Listeners
+        el.btnTake.addEventListener('click', () => {
+            el.btnTake.disabled = true; // 點擊瞬間立即禁用防止重複點擊
+            el.btnTake.querySelector('span').textContent = "COUNTDOWN...";
+            socket.emit('trigger_shot');
+        });
+        el.btnStop.addEventListener('click', () => socket.emit('user_clicked_stop'));
+        el.btnKeep.addEventListener('click', () => socket.emit('choice_keep', { filename: currentTempFile }));
+        el.btnRetake.addEventListener('click', () => socket.emit('choice_retake'));
+        el.btnFinish.addEventListener('click', () => socket.emit('user_clicked_finish_early'));
+        el.btnReset.addEventListener('click', () => socket.emit('user_clicked_reset'));
+        el.btnRestart.addEventListener('click', startNewSession);
+
+        // Socket Logic
         socket.on('status_update', (data) => {
-            document.getElementById('statusText').innerText = data.message.toUpperCase();
-            if (data.kept !== undefined) document.getElementById('progress').innerText = `${data.kept}/4`;
+            console.log("Status:", data);
+
+            if (data.message) el.txtStatus.innerText = data.message.toUpperCase();
+            if (data.kept !== undefined) el.txtProgress.innerText = `${data.kept}/4`;
             if (data.currentFile) currentTempFile = data.currentFile;
 
-            // UI State Switching
-            const uis = {
-                idle: document.getElementById('idle-ui'),
-                rec: document.getElementById('rec-ui'),
-                rev: document.getElementById('review-ui'),
-                fin: document.getElementById('final-ui')
-            };
-
-            Object.values(uis).forEach(el => el.classList.add('hidden'));
-            recIndicator.classList.add('hidden');
-
-            if (data.state === 0) {
-                uis.rec.classList.remove('hidden');
-                recIndicator.classList.remove('hidden');
+            // 狀態五：展示結果並更新 QR Code
+            if (data.state === 5) {
+                el.secCapture.classList.add('hidden');
+                el.secResult.classList.remove('hidden');
+                el.imgFinal.src = `${data.finalUrl}?t=${Date.now()}`;
+                
+                // 更新 QR Code 指向圖片下載路徑 (需加上完整的 Origin)
+                const downloadLink = window.location.origin + data.finalUrl;
+                qr.set({ value: downloadLink });
+                
+                return;
             }
-            else if (data.state === 4) uis.rev.classList.remove('hidden');
-            else if (data.state === 1) uis.fin.classList.remove('hidden');
-            else uis.idle.classList.remove('hidden');
+
+            // Capture views reset
+            if ([0, 1, 2, 4].includes(data.state)) {
+                el.secResult.classList.add('hidden');
+                el.secCapture.classList.remove('hidden');
+            }
+
+            /**
+             * 按鈕狀態與文字核心判斷
+             */
+            if (isCameraReady && data.state === 2) {
+                // 只有攝影機好了 且 伺服器 Ready (State 2) 才啟用
+                el.btnTake.disabled = false;
+                el.btnTake.querySelector('span').textContent = "TAKE PHOTO";
+            } else {
+                el.btnTake.disabled = true;
+                if (!isCameraReady) {
+                    el.btnTake.querySelector('span').textContent = "INITIALIZING...";
+                } else if (data.state === 0) {
+                    el.btnTake.querySelector('span').textContent = "COUNTDOWN...";
+                } else if (data.state === 1) {
+                    el.btnTake.querySelector('span').textContent = "PROCESSING...";
+                } else {
+                    el.btnTake.querySelector('span').textContent = "PLEASE WAIT";
+                }
+            }
+            
+            // Finish Early Button 顯示邏輯
+            if (data.kept > 0 && data.state === 2) el.btnFinish.classList.remove('hidden');
+            else el.btnFinish.classList.add('hidden');
+
+            // UI Group Switching
+            Object.values(el.uis).forEach(div => div.classList.add('hidden'));
+            el.divRec.classList.add('hidden');
+
+            if (data.state === 0) { el.uis.rec.classList.remove('hidden'); el.divRec.classList.remove('hidden'); }
+            else if (data.state === 4) el.uis.rev.classList.remove('hidden');
+            else if (data.state === 1) el.uis.fin.classList.remove('hidden');
+            else el.uis.idle.classList.remove('hidden');
         });
+
+        function startNewSession() {
+            el.secResult.classList.add('hidden');
+            el.secCapture.classList.remove('hidden');
+            el.txtProgress.innerText = `0/4`;
+            el.btnFinish.classList.add('hidden');
+            socket.emit('user_clicked_start');
+        }
     </script>
 </body>
 </html>

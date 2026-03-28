@@ -1,0 +1,121 @@
+import json
+import requests
+import os
+
+# Global variables for session management
+current_session_path = ""
+attempt_count = 0 
+
+def onHTTPRequest(webServerDAT, request, response):
+    global current_session_path, attempt_count
+
+    # --- 0. GET Test (Browser check) ---
+    if request['method'] == 'GET' and request['uri'] == '/':
+        target_fps = root.time.rate
+        actual_fps = round(project.cookRate, 2)
+        
+        current_state = int(op('state_holder')['state'].eval())
+        captured = attempt_count
+        
+        # Map state numbers to human-readable text
+        state_map = {
+            0: "RECORDING (Shutter Open)", 
+            1: "FINISHED", 
+            2: "IDLE", 
+            3: "COUNTDOWN", 
+            4: "REVIEWING"
+        }
+        state_text = state_map.get(current_state, "UNKNOWN")
+        
+        # Build JSON response
+        response_data = {
+            "system_state": state_text,
+            "progress": {
+                "captured": captured,
+                "total": 4
+            },
+            "performance": {
+                "actual_fps": actual_fps,
+                "target_fps": target_fps,
+                "low_fps_warning": actual_fps < (target_fps - 5)
+            }
+        }
+        
+        response['statusCode'] = 200
+        response['statusReason'] = 'OK'
+        response['data'] = response_data
+        response['Content-Type'] = 'application/json; charset=utf-8'
+        
+        return response
+    
+    # --- 1. Start Session  ---
+    if request['method'] == 'POST' and request['uri'] == '/start_session':
+        data = json.loads(request['data'])
+        session_id = data.get('sessionID', 'default')
+        
+        # Create unique folder for this session
+        current_session_path = f"{project.folder}/sessions/{session_id}"
+            
+        attempt_count = 0 # Reset attempt counter
+        op('state_holder').par.value0 = 2 # Set state to Idle
+        print(f"New session started: {session_id}")
+        
+        response['statusCode'] = 200
+        response['data'] = json.dumps({"message": "Session initialized"})
+        return response
+
+    # --- 2. Start Countdown (2 -> 3) ---
+    elif request['method'] == 'POST' and request['uri'] == '/start_countdown':
+        print("Starting countdown sequence")
+        op('state_holder').par.value0 = 3 # Countdown state
+        op('timer_countdown').par.start.pulse()
+        
+        response['statusCode'] = 200
+        return response
+        
+    # --- 3. Stop & Save (0 -> 4) ---
+    elif request['method'] == 'POST' and request['uri'] == '/stop_and_save':
+        op('state_holder').par.value0 = 1
+
+        if not os.path.exists(current_session_path):
+            os.makedirs(current_session_path)
+
+        attempt_count += 1
+        filename = f"raw_{attempt_count}.png"
+        filepath = f"{current_session_path}/{filename}"
+        
+        # Save current frame
+        op('final_render').save(filepath)
+        print(f"Saved attempt {attempt_count}: {filepath}")
+        
+        # Notify Node.js that a new file is ready for review
+        notify_preview(attempt_count, filename)
+        
+        response['statusCode'] = 200
+        response['data'] = json.dumps({"filename": filename})
+        return response
+
+    # --- 4. System Reset ---
+    elif request['method'] == 'POST' and request['uri'] == '/reset':
+        print("System reset requested")
+        op('state_holder').par.value0 = 2
+        op('timer_countdown').par.initialize.pulse()
+        response['statusCode'] = 200
+        return response
+
+    # --- 5. Ready for Next Attempt (Keep/Retake cleanup) ---
+    elif request['method'] == 'POST' and request['uri'] == '/ready_for_next_attempt':
+        print("Ready for next attempt - resetting to idle state")
+        op('state_holder').par.value0 = 2  # Back to idle
+        response['statusCode'] = 200
+        return response
+
+    return response
+
+def notify_preview(index, filename):
+    # Tell Node.js which file to show for the Keep/Retake choice
+    url = 'http://127.0.0.1:5000/td_preview_ready'
+    try:
+        requests.post(url, json={'index': index, 'filename': filename})
+    except:
+        pass

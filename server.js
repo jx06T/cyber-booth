@@ -7,6 +7,7 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const { generateFinalCollage } = require('./composer');
 
 const TD_URL = 'http://127.0.0.1:8080';
 
@@ -15,7 +16,16 @@ let selectedPhotos = [];
 let currentSessionID = "";
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use('/sessions', express.static(path.join(__dirname, 'sessions')));
+
+// app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+    etag: false,
+    lastModified: false,
+    setHeaders: (res) => {
+        res.set('Cache-Control', 'no-store');
+    }
+}));
 
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
@@ -27,14 +37,21 @@ io.on('connection', (socket) => {
         console.log(`Starting session: ${currentSessionID}`);
         try {
             await axios.post(`${TD_URL}/start_session`, { sessionID: currentSessionID });
-            io.emit('status_update', { message: 'Ready', state: 2, kept: 0 });
-        } catch (e) { console.log("Error contacting TD"); }
+        } catch (e) {
+            console.log("Error contacting TD:", e.message);
+        }
+        // 無論 TD 是否成功，都發送狀態
+        io.emit('status_update', { message: 'Ready', state: 2, kept: 0 });
     });
 
     // User clicks TAKE PHOTO
     socket.on('trigger_shot', async () => {
         console.log('Triggering countdown');
-        await axios.post(`${TD_URL}/start_countdown`);
+        try {
+            await axios.post(`${TD_URL}/start_countdown`);
+        } catch (e) {
+            console.error('TD error:', e.response?.status);
+        }
     });
 
     // User clicks STOP & SAVE
@@ -52,7 +69,19 @@ io.on('connection', (socket) => {
             // All 4 photos are collected
             io.emit('status_update', { message: 'Processing final collage...', kept: 4, state: 1 });
             console.log('Session complete. List:', selectedPhotos);
-            // Trigger synthesis here
+            try {
+                // 執行合成與上傳
+                const finalUrl = await generateFinalCollage(currentSessionID, selectedPhotos);
+
+                // 告訴前端完成，並傳送下載 URL 供生成 QR Code
+                io.emit('status_update', {
+                    message: 'Finished',
+                    state: 5,
+                    finalUrl: finalUrl
+                });
+            } catch (e) {
+                io.emit('status_update', { message: 'Composition Failed', state: 2 });
+            }
         } else {
             // Return to IDLE to wait for next trigger
             io.emit('status_update', { message: `Keep success! ${selectedPhotos.length}/4`, state: 2, kept: selectedPhotos.length });
@@ -76,6 +105,32 @@ io.on('connection', (socket) => {
     socket.on('user_clicked_reset', async () => {
         await axios.post(`${TD_URL}/reset`);
         io.emit('status_update', { message: 'Reset done', state: 2, kept: 0 });
+    });
+
+    socket.on('user_clicked_finish_early', async () => {
+        if (selectedPhotos.length === 0) return;
+
+        console.log(`Finish early requested. Current count: ${selectedPhotos.length}`);
+        io.emit('status_update', { message: 'Finishing with current shots...', state: 1 });
+
+        // 核心邏輯：如果不足 4 張，循環填充
+        const originalCount = selectedPhotos.length;
+        while (selectedPhotos.length < 4) {
+            // 例如只有 2 張 [A, B]，補齊後變成 [A, B, A, B]
+            selectedPhotos.push(selectedPhotos[selectedPhotos.length % originalCount]);
+        }
+
+        try {
+            const finalUrl = await generateFinalCollage(currentSessionID, selectedPhotos);
+            io.emit('status_update', {
+                message: 'Finished',
+                state: 5,
+                finalUrl: finalUrl
+            });
+        } catch (e) {
+            console.error(e);
+            io.emit('status_update', { message: 'Composition Failed', state: 2 });
+        }
     });
 });
 
