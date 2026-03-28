@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Booth | Digital Collage Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body { background: #050505; color: white; font-family: monospace; }
+        .cyber-border { border: 1px solid #ec4899; box-shadow: 0 0 15px rgba(236, 72, 153, 0.3); }
+        .neon-text { text-shadow: 0 0 8px #ec4899; }
+        section { display: none; }
+        section.active { display: flex; }
+        #img-display { opacity: 0; transition: opacity 0.5s ease; }
+        #img-display.loaded { opacity: 1; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+
+    <!-- 1. 首頁狀態 (Landing Page) -->
+    <section id="sec-home" class="active flex-col items-center max-w-lg">
+        <h1 class="text-5xl font-black text-pink-500 mb-2 neon-text">CYBER BOOTH</h1>
+        <p class="text-xs tracking-[0.3em] text-gray-500 mb-8 uppercase">Digital Capture & Collage System</p>
+        
+        <div class="bg-gray-900/50 p-6 rounded-2xl border border-gray-800 mb-8 leading-relaxed text-sm text-gray-400">
+            <p class="mb-4">這是一個專為實體活動設計的「拍貼與特效合成」工具。</p>
+            <p>請前往活動現場使用我們的 <span class="text-pink-400">Cyber Booth 拍貼機</span>。拍攝完成後，掃描螢幕上的 QR Code 即可下載您的數位拍貼。</p>
+        </div>
+
+        <div class="flex flex-col gap-4 w-full">
+            <a href="https://club.cksc.tw/" target="_blank" class="w-full py-3.5 bg-white text-black font-bold rounded-full hover:bg-pink-500 hover:text-white transition-all">
+                VISIT OFFICIAL WEBSITE
+            </a>
+            <a href="https://github.com/your-repo/cyber-booth" target="_blank" class="text-gray-400 text-xs hover:text-white transition-colors mt-2">
+                [ VIEW SOURCE CODE ON GITHUB ]
+            </a>
+        </div>
+    </section>
+
+    <!-- 2. 載入狀態 (Loading) -->
+    <section id="sec-loading" class="flex-col items-center">
+        <div class="w-12 h-12 border-4 border-pink-500/20 border-t-pink-500 rounded-full animate-spin mb-4"></div>
+        <p class="text-pink-500 animate-pulse text-sm tracking-widest">RETRIEVING IMAGE...</p>
+    </section>
+
+    <!-- 3. 下載預覽狀態 (Main Content) -->
+    <section id="sec-main" class="flex-col items-center w-full max-w-sm">
+        <header class="mb-4">
+            <h2 class="text-pink-500 font-bold text-xl tracking-tighter neon-text">YOUR MOMENT</h2>
+            <p class="text-[10px] text-gray-500 uppercase">Collage ID: <span id="txt-session-id" class="text-gray-300"></span></p>
+        </header>
+
+        <div class="cyber-border rounded-lg overflow-hidden bg-black mb-6 w-full">
+            <img id="img-display" src="" alt="Your Collage">
+        </div>
+
+        <button id="btn-download" class="w-full bg-pink-600 hover:bg-pink-500 text-white py-4 rounded-full font-bold transition-all shadow-lg shadow-pink-500/20 mb-6">
+            DOWNLOAD IMAGE
+        </button>
+        
+        <div class="flex flex-col gap-2">
+            <p class="text-[10px] text-gray-600 uppercase">Image will be auto-deleted in 24 hours</p>
+            <a href="/" class="text-gray-500 text-[10px] underline hover:text-white uppercase tracking-widest">Back to info</a>
+        </div>
+    </section>
+
+    <!-- 4. 錯誤狀態 (Error / Expired) -->
+    <section id="sec-error" class="flex-col items-center">
+        <h1 class="text-6xl font-black text-gray-800 mb-4">404</h1>
+        <div class="mb-8">
+            <p class="text-pink-400 font-bold mb-2">IMAGE NOT FOUND</p>
+            <p class="text-gray-500 text-xs leading-loose px-8">
+                這張照片可能已經因為超過 <span class="text-gray-300">24 小時</span> 而被系統自動刪除，<br>請確認網址正確或詢問管理人員。
+            </p>
+        </div>
+        <a href="/" class="border border-gray-700 text-gray-400 px-8 py-3 rounded-full text-xs hover:bg-gray-800 hover:text-white transition-all">
+            RETURN HOME
+        </a>
+    </section>
+
+    <script>
+        // --- 配置區域 ---
+        // 替換為你的 Supabase Project ID
+        const SUPABASE_STORAGE_URL = "https://YOUR_PROJECT_ID.supabase.co/storage/v1/object/public/photos";
+        
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get('id');
+        
+        const sections = {
+            home: document.getElementById('sec-home'),
+            loading: document.getElementById('sec-loading'),
+            main: document.getElementById('sec-main'),
+            error: document.getElementById('sec-error')
+        };
+
+        const el = {
+            img: document.getElementById('img-display'),
+            btn: document.getElementById('btn-download'),
+            txtId: document.getElementById('txt-session-id')
+        };
+
+        // --- 路由邏輯 ---
+        function showSection(name) {
+            Object.values(sections).forEach(s => s.classList.remove('active'));
+            sections[name].classList.add('active');
+        }
+
+        if (!sessionId) {
+            // 情況 1: 沒有參數，顯示首頁
+            showSection('home');
+        } else {
+            // 情況 2: 有參數，開始載入圖片
+            showSection('loading');
+            loadPhoto(sessionId);
+        }
+
+        // --- 功能邏輯 ---
+        function loadPhoto(id) {
+            const imageUrl = `${SUPABASE_STORAGE_URL}/${id}.jpg`;
+            el.txtId.innerText = id;
+
+            const tempImg = new Image();
+            tempImg.src = imageUrl;
+            
+            tempImg.onload = () => {
+                el.img.src = imageUrl;
+                el.img.classList.add('loaded');
+                showSection('main');
+                
+                el.btn.onclick = () => downloadImage(imageUrl, `collage-${id}.jpg`);
+            };
+
+            tempImg.onerror = () => {
+                // 情況 3: 圖片不存在 (過期)
+                showSection('error');
+            };
+        }
+
+        async function downloadImage(url, filename) {
+            try {
+                el.btn.innerText = "STARTING DOWNLOAD...";
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(blobUrl);
+                el.btn.innerText = "DOWNLOAD IMAGE";
+            } catch (e) {
+                // 跨域失敗時直接新分頁打開圖片
+                window.open(url, '_blank');
+            }
+        }
+    </script>
+</body>
+</html>
