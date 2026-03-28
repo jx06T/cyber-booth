@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CyberBooth Remote</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
+    <style>
+        body {
+            background-color: #020617;
+            touch-action: manipulation;
+            /* 防止雙擊縮放 */
+            overflow: hidden;
+        }
+
+        .btn-giant {
+            height: 100vh;
+            /* 滿版高度 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 900;
+            transition: all 0.1s active;
+        }
+
+        .btn-giant:active:not(:disabled) {
+            transform: scale(0.98);
+            opacity: 0.8;
+        }
+
+        /* 禁用狀態的視覺反饋 */
+        button:disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body class="text-white font-mono">
+
+    <!-- 狀態顯示條 -->
+    <div id="status-bar" class="fixed top-0 left-0 w-full bg-pink-600 text-[10px] py-1 px-4 flex justify-between z-50">
+        <span id="remote-msg">CONNECTING...</span>
+        <span id="remote-progress">SHOTS: 0/4</span>
+    </div>
+
+    <!-- UI: 待機狀態 - 拍照按鈕 -->
+    <div id="ui-idle" class="hidden">
+        <button id="btn-take" class="btn-giant w-full bg-pink-600 active:bg-pink-700">
+            TAKE PHOTO
+        </button>
+    </div>
+
+    <!-- UI: 錄影中 - 停止按鈕 -->
+    <div id="ui-rec" class="hidden">
+        <button id="btn-stop" class="btn-giant w-full bg-red-600 animate-pulse">
+            STOP & SAVE
+        </button>
+    </div>
+
+    <!-- UI: 預覽中 - 保持或重拍 -->
+    <div id="ui-rev" class="hidden flex w-full h-full">
+        <button id="btn-retake" class="btn-giant flex-[1] bg-gray-800 border-r border-gray-700 text-gray-400">
+            RETAKE
+        </button>
+        <button id="btn-keep" class="btn-giant flex-[2] bg-green-600">
+            KEEP
+        </button>
+    </div>
+
+    <!-- UI: 處理中 / 結束 -->
+    <div id="ui-busy" class="hidden">
+        <div class="btn-giant w-full bg-black text-pink-500">
+            <div class="flex flex-col items-center">
+                <span class="animate-spin mb-4 text-5xl">◌</span>
+                <span class="text-2xl" id="busy-text">PROCESSING...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部輔助按鈕 (較小) -->
+    <div id="ui-footer" class="fixed bottom-4 right-4 flex gap-4 z-50">
+        <button id="btn-finish" class="hidden bg-white/10 px-4 py-2 rounded-full text-xs transition-opacity">FINISH
+            EARLY</button>
+        <button id="btn-reset"
+            class="bg-red-900/30 px-4 py-2 rounded-full text-xs text-red-500 transition-opacity">RESET</button>
+    </div>
+
+    <script>
+        const socket = io();
+        socket.on('connect', () => {
+            document.getElementById('remote-msg').innerText = "LINKED - WAITING DATA";
+        });
+
+        let currentTempFile = "";
+
+        // DOM Elements
+        const btnTake = document.getElementById('btn-take');
+        const btnStop = document.getElementById('btn-stop');
+        const btnRetake = document.getElementById('btn-retake');
+        const btnKeep = document.getElementById('btn-keep');
+        const btnFinish = document.getElementById('btn-finish');
+        const btnReset = document.getElementById('btn-reset');
+        const remoteProgress = document.getElementById('remote-progress');
+        const remoteMsg = document.getElementById('remote-msg');
+
+        const sections = {
+            idle: document.getElementById('ui-idle'),
+            rec: document.getElementById('ui-rec'),
+            rev: document.getElementById('ui-rev'),
+            busy: document.getElementById('ui-busy')
+        };
+
+        // 還原所有按鈕狀態
+        const restoreButtonStates = () => {
+            btnTake.disabled = false;
+            btnTake.innerText = "TAKE PHOTO";
+
+            btnStop.disabled = false;
+            btnStop.innerText = "STOP & SAVE";
+
+            btnRetake.disabled = false;
+            btnRetake.innerText = "RETAKE";
+
+            btnKeep.disabled = false;
+            btnKeep.innerText = "KEEP";
+
+            btnFinish.disabled = false;
+            btnFinish.innerText = "FINISH EARLY";
+
+            btnReset.disabled = false;
+            btnReset.innerText = "RESET";
+        };
+
+        const updateUI = (state) => {
+            Object.values(sections).forEach(s => s.classList.add('hidden'));
+            btnFinish.classList.add('hidden');
+
+            if (state === 0) sections.rec.classList.remove('hidden');
+            else if (state === 4) sections.rev.classList.remove('hidden');
+            else if (state === 1) {
+                sections.busy.classList.remove('hidden');
+                document.getElementById('busy-text').innerText = "GENERATING...";
+            }
+            else if (state === 5) {
+                sections.busy.classList.remove('hidden');
+                document.getElementById('busy-text').innerText = "DONE! (Check Screen)";
+            }
+            else {
+                sections.idle.classList.remove('hidden');
+            }
+        };
+
+        // 按鈕事件 (預防性鎖定與狀態更新)
+        btnTake.onclick = () => {
+            btnTake.disabled = true;
+            btnTake.innerText = "COUNTDOWN...";
+            socket.emit('trigger_shot');
+        };
+
+        btnStop.onclick = () => {
+            btnStop.disabled = true;
+            btnStop.innerText = "SAVING...";
+            socket.emit('user_clicked_stop');
+        };
+
+        btnKeep.onclick = () => {
+            btnKeep.disabled = true;
+            btnRetake.disabled = true; // 鎖住重拍
+            btnKeep.innerText = "SAVING...";
+            socket.emit('choice_keep', { filename: currentTempFile });
+        };
+
+        btnRetake.onclick = () => {
+            btnRetake.disabled = true;
+            btnKeep.disabled = true; // 鎖住保留
+            btnRetake.innerText = "TRASHING...";
+            socket.emit('choice_retake');
+        };
+
+        btnFinish.onclick = () => {
+            btnFinish.disabled = true;
+            btnFinish.innerText = "WAIT...";
+            socket.emit('user_clicked_finish_early');
+        };
+
+        btnReset.onclick = () => {
+            if (confirm('Reset Session?')) {
+                btnReset.disabled = true;
+                btnReset.innerText = "RESETTING...";
+                socket.emit('user_clicked_reset');
+            }
+        };
+
+        // 伺服器狀態更新
+        socket.on('status_update', (data) => {
+            console.log("Remote received:", data);
+
+            // 收到新狀態，立刻還原所有按鈕以備下一次操作
+            restoreButtonStates();
+
+            if (data.currentFile) currentTempFile = data.currentFile;
+
+            if (data.kept !== undefined) {
+                remoteProgress.innerText = `SHOTS: ${data.kept}/4`;
+                if (data.kept > 0 && data.state === 2) {
+                    btnFinish.classList.remove('hidden');
+                }
+            }
+
+            if (data.message) {
+                remoteMsg.innerText = data.message.toUpperCase();
+            }
+
+            updateUI(data.state);
+        });
+
+    </script>
+</body>
+
+</html>

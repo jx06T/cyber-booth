@@ -8,16 +8,24 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const { generateFinalCollage } = require('./composer');
-
 const TD_URL = 'http://127.0.0.1:8080';
 
 // App state
 let selectedPhotos = [];
 let currentSessionID = "";
+let currentSystemState = 2;
 
 app.use(express.json());
 app.use('/sessions', express.static(path.join(__dirname, 'sessions')));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// 統一的狀態廣播函數 (自動更新 currentSystemState 並發送 io.emit)
+function broadcastStatusUpdate(payload) {
+    if (payload.state !== undefined) {
+        currentSystemState = payload.state;
+    }
+    io.emit('status_update', payload);
+}
 
 async function systemFullReset() {
     console.log("--- 完全重置 ---");
@@ -36,11 +44,18 @@ async function systemFullReset() {
 
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
+    
+    // 這裡維持 socket.emit，因為只需要讓「剛連線/重整」的單一裝置知道現狀，不用廣播給所有人
+    socket.emit('status_update', {
+        message: selectedPhotos.length > 0 ? 'Connected - Resuming' : 'Ready',
+        state: currentSystemState,
+        kept: selectedPhotos.length
+    });
 
     // Initialize session
     socket.on('user_clicked_start', async () => {
         await systemFullReset();
-        io.emit('status_update', { message: 'Ready for new session', state: 2, kept: 0 });
+        broadcastStatusUpdate({ message: 'Ready for new session', state: 2, kept: 0 });
     });
 
     // User clicks TAKE PHOTO
@@ -70,24 +85,24 @@ io.on('connection', (socket) => {
 
         if (selectedPhotos.length >= 4) {
             // All 4 photos are collected
-            io.emit('status_update', { message: 'Processing final collage...', kept: 4, state: 1 });
-            console.log("currentSessionID:",currentSessionID)
+            broadcastStatusUpdate({ message: 'Processing final collage...', kept: 4, state: 1 });
+            console.log("currentSessionID:", currentSessionID);
             console.log('Session complete. List:', selectedPhotos);
 
             try {
                 const result = await generateFinalCollage(currentSessionID, selectedPhotos);
-                io.emit('status_update', {
+                broadcastStatusUpdate({
                     message: 'Finished',
                     state: 5,
                     result: result
                 });
             } catch (e) {
-                await systemFullReset()
-                io.emit('status_update', { message: 'Composition Failed', state: 2 });
+                await systemFullReset();
+                broadcastStatusUpdate({ message: 'Composition Failed', state: 2 });
             }
         } else {
             // Return to IDLE to wait for next trigger
-            io.emit('status_update', { message: `Keep success! ${selectedPhotos.length}/4`, state: 2, kept: selectedPhotos.length });
+            broadcastStatusUpdate({ message: `Keep success! ${selectedPhotos.length}/4`, state: 2, kept: selectedPhotos.length });
             // Reset TD backend to idle state
             try {
                 await axios.post(`${TD_URL}/ready_for_next_attempt`);
@@ -98,7 +113,7 @@ io.on('connection', (socket) => {
     // User choice: RETAKE
     socket.on('choice_retake', async () => {
         console.log('User chose to retake');
-        io.emit('status_update', { message: 'Retake! Try again.', state: 2, kept: selectedPhotos.length });
+        broadcastStatusUpdate({ message: 'Retake! Try again.', state: 2, kept: selectedPhotos.length });
         // Reset TD backend to idle state
         try {
             await axios.post(`${TD_URL}/ready_for_next_attempt`);
@@ -107,15 +122,15 @@ io.on('connection', (socket) => {
 
     socket.on('user_clicked_reset', async () => {
         await systemFullReset();
-        io.emit('status_update', { message: 'System Reset Done', state: 2, kept: 0 });
+        broadcastStatusUpdate({ message: 'System Reset Done', state: 2, kept: 0 });
     });
 
     socket.on('user_clicked_finish_early', async () => {
         if (selectedPhotos.length === 0) return;
-        console.log("currentSessionID:",currentSessionID)
+        console.log("currentSessionID:", currentSessionID);
 
         console.log(`Finish early requested. Current count: ${selectedPhotos.length}`);
-        io.emit('status_update', { message: 'Finishing with current shots...', state: 1 });
+        broadcastStatusUpdate({ message: 'Finishing with current shots...', state: 1 });
 
         // 核心邏輯：如果不足 4 張，循環填充
         const originalCount = selectedPhotos.length;
@@ -126,27 +141,31 @@ io.on('connection', (socket) => {
 
         try {
             const result = await generateFinalCollage(currentSessionID, selectedPhotos);
-            io.emit('status_update', {
+            broadcastStatusUpdate({
                 message: 'Finished',
                 state: 5,
                 result: result
             });
         } catch (e) {
-            await systemFullReset()
-            io.emit('status_update', { message: 'Composition Failed', state: 2 });
+            await systemFullReset();
+            broadcastStatusUpdate({ message: 'Composition Failed', state: 2 });
         }
     });
 });
 
+app.get('/remote', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'remote.html'));
+});
+
 // TD Webhooks
 app.post('/td_recording_started', (req, res) => {
-    io.emit('status_update', { message: 'DRAW NOW!', state: 0 });
+    broadcastStatusUpdate({ message: 'DRAW NOW!', state: 0 });
     res.send('ok');
 });
 
 app.post('/td_preview_ready', (req, res) => {
     // Show KEEP/RETAKE UI on frontend
-    io.emit('status_update', {
+    broadcastStatusUpdate({
         message: 'Review your shot',
         state: 4,
         currentFile: req.body.filename
