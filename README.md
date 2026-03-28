@@ -1,6 +1,6 @@
 # Cyber Booth - Interactive Photo System
 
-###### _version-V3.3.0_
+###### _version-v3.4.0_
 
 > [!NOTE]
 > 本專案是一個結合 **TouchDesigner** 的高性能互動拍貼系統。
@@ -120,7 +120,12 @@ const layout = require("./layout/b.json");
 ### 3.3
 
 ```
-3.3.0 (Latest)
+3.4.0 (Latest)
+- 添加手機遙控面板
+- 降低追蹤開銷
+- 修改仙女棒粒子效果
+
+3.3.0
 - 補全專案 README 與自定義相框開發文檔
 - 撰寫部署提示頁面 (deploy-info.html) 邏輯
 
