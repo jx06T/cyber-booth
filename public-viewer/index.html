@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,38 +8,62 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
-        body { background: #050505; color: white; font-family: monospace; }
-        .cyber-border { border: 1px solid #ec4899; box-shadow: 0 0 15px rgba(236, 72, 153, 0.3); }
-        .neon-text { text-shadow: 0 0 8px #ec4899; }
-        section { display: none; }
-        section.active { display: flex; }
-        #img-display { opacity: 0; transition: opacity 0.5s ease; }
-        #img-display.loaded { opacity: 1; }
+        body {
+            background: #050505;
+            color: white;
+            font-family: monospace;
+        }
+
+        .cyber-border {
+            border: 1px solid #ec4899;
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.3);
+        }
+
+        .neon-text {
+            text-shadow: 0 0 8px #ec4899;
+        }
+
+        section {
+            display: none;
+        }
+
+        section.active {
+            display: flex;
+        }
+
+        #img-display {
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #img-display.loaded {
+            opacity: 1;
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-6 text-center">
 
-    <a href="https://github.com/jx06T/cyber-booth" target="_blank" class="fixed top-4 right-6 flex items-center gap-2 text-gray-400 hover:text-pink-500 transition-colors text-xs uppercase tracking-widest pointer-events-auto">
-        <i class="fa-brands fa-github text-sm"></i>
-        <span>v1.0.2 - jx06T</span>
-    </a>
+<body class="min-h-screen flex flex-col items-center justify-center p-6 text-center">
 
     <!-- 1. 首頁狀態 (Landing Page) -->
     <section id="sec-home" class="active flex-col items-center max-w-lg">
-        <h1 class="text-5xl font-black text-pink-500 mb-2 neon-text">CYBER BOOTH</h1>
+        <h1 class="text-5xl font-black text-pink-500 mb-2 neon-text uppercase">Cyber Booth</h1>
         <p class="text-xs tracking-[0.3em] text-gray-500 mb-8 uppercase">Digital Capture & Collage System</p>
-        
-        <div class="bg-gray-900/50 p-6 rounded-2xl border border-gray-800 mb-8 leading-relaxed text-sm text-gray-400">
+
+        <div
+            class="bg-gray-900/50 p-6 rounded-2xl border border-gray-800 mb-8 leading-relaxed text-sm text-gray-400 text-left">
             <p class="mb-4">這是一個專為實體活動設計的「拍貼與特效合成」工具。</p>
-            <p>請前往活動現場使用我們的 <span class="text-pink-400">Cyber Booth 拍貼機</span>。拍攝完成後，掃描螢幕上的 QR Code 即可下載您的數位拍貼。</p>
+            <p>請前往活動現場使用我們的 <span class="text-pink-400">Cyber Booth 拍貼機</span>。拍攝完成後，掃描螢幕上的 QR Code 即可下載您的數位拍貼成品。</p>
         </div>
 
         <div class="flex flex-col gap-4 w-full">
-            <a href="https://club.cksc.tw/" target="_blank" class="w-full py-3.5 bg-white text-black font-bold rounded-full hover:bg-pink-500 hover:text-white transition-all">
+            <a href="https://club.cksc.tw/" target="_blank"
+                class="w-full py-3.5 bg-white text-black font-bold rounded-full hover:bg-pink-500 hover:text-white transition-all">
                 VISIT OFFICIAL WEBSITE
             </a>
-            <a href="https://github.com/jx06T/cyber-booth" target="_blank" class="text-gray-400 text-xs hover:text-white transition-colors mt-2">
-                [ VIEW SOURCE CODE ON GITHUB ]
+            <a href="https://github.com/jx06T/cyber-booth" target="_blank"
+                class="mt-2 flex justify-center gap-2 items-center text-gray-400 hover:text-pink-500 transition-colors text-xs uppercase tracking-widest">
+                <i class="fa-brands fa-github text-sm"></i>
+                <span>v1.0.2 - jx06T</span>
             </a>
         </div>
     </section>
@@ -53,45 +78,61 @@
     <section id="sec-main" class="flex-col items-center w-full max-w-sm">
         <header class="mb-4">
             <h2 class="text-pink-500 font-bold text-2xl tracking-tighter neon-text">YOUR MOMENT</h2>
-            <p class="text-xs text-gray-500 uppercase">Collage ID: <span id="txt-session-id" class="text-gray-300"></span></p>
+            <p class="text-xs text-gray-500 uppercase">Collage ID: <span id="txt-session-id"
+                    class="text-gray-300"></span></p>
         </header>
 
-        <div class=" rounded-md overflow-hidden bg-black mb-6 w-full">
+        <div class="rounded-md overflow-hidden bg-black mb-6 w-full shadow-2xl">
             <img id="img-display" src="" alt="Your Collage">
         </div>
 
-        <button id="btn-download" class="w-full bg-pink-600 hover:bg-pink-500 text-white py-3 rounded-full font-bold transition-all shadow-lg text-lg shadow-pink-500/20 mb-6">
-            DOWNLOAD IMAGE
-        </button>
-        
-        <div class="flex flex-col gap-2">
-            <p class="text-xs text-gray-600 uppercase">Image will be auto-deleted in 24 hours</p>
-            <a href="/" class="text-gray-500 text-xs underline hover:text-white uppercase tracking-widest">Back to HOME</a>
+        <div class="flex gap-3 w-full text-lg">
+            <button id="btn-download"
+                class="flex-1 bg-pink-600 hover:bg-pink-500 text-white py-3.5 rounded-full font-bold transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-download"></i>
+                <span class="btn-text">DOWNLOAD</span>
+            </button>
+            <button id="btn-share"
+                class="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-3.5 rounded-full font-bold transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-share-nodes"></i>
+                <span class="btn-text">SHARE</span>
+            </button>
+        </div>
+
+        <div class="flex flex-col gap-2 mt-6">
+            <p class="text-[10px] text-gray-600 uppercase tracking-widest">Image will be auto-deleted in 24 hours</p>
+            <a href="/"
+                class="text-gray-500 text-xs underline hover:text-white uppercase tracking-widest transition-colors">
+                Back to HOME
+            </a>
+            <a href="https://github.com/jx06T/cyber-booth" target="_blank"
+                class=" mt-2 flex justify-center gap-2 items-center text-gray-400 hover:text-pink-500 transition-colors text-xs uppercase tracking-widest pointer-events-auto">
+                <i class="fa-brands fa-github text-sm"></i>
+                <span class="inline-block">v1.0.2 - jx06T</span>
+            </a>
         </div>
     </section>
 
     <!-- 4. 錯誤狀態 (Error / Expired) -->
     <section id="sec-error" class="flex-col items-center">
-        <h1 class="text-8xl font-black text-gray-500">404</h1>
+        <h1 class="text-8xl font-black text-gray-800">404</h1>
         <div class="mb-8">
             <p class="text-pink-400 font-bold mb-4 text-lg">IMAGE NOT FOUND</p>
             <p class="text-gray-400 text-sm leading-loose px-8">
                 這張照片可能已超過 <span class="text-gray-300">24 小時</span> 下載期限而被系統自動刪除，<br>請確認網址正確或詢問管理人員。
             </p>
         </div>
-        <a href="/" class="border border-gray-700 text-gray-400 px-8 py-3 rounded-full text-xs hover:bg-gray-800 hover:text-white transition-all">
+        <a href="/"
+            class="border border-gray-700 text-gray-400 px-8 py-3 rounded-full text-xs hover:bg-gray-800 hover:text-white transition-all">
             RETURN HOME
         </a>
     </section>
 
     <script>
-        // --- 配置區域 ---
-        // 替換為你的 Supabase Project ID
         const SUPABASE_STORAGE_URL = "https://ideczmuynbnfkonausvj.supabase.co/storage/v1/object/public/photos";
-        
         const params = new URLSearchParams(window.location.search);
         const sessionId = params.get('id');
-        
+
         const sections = {
             home: document.getElementById('sec-home'),
             loading: document.getElementById('sec-loading'),
@@ -101,54 +142,55 @@
 
         const el = {
             img: document.getElementById('img-display'),
-            btn: document.getElementById('btn-download'),
+            btnDownload: document.getElementById('btn-download'),
+            btnShare: document.getElementById('btn-share'),
             txtId: document.getElementById('txt-session-id')
         };
 
-        // --- 路由邏輯 ---
         function showSection(name) {
             Object.values(sections).forEach(s => s.classList.remove('active'));
             sections[name].classList.add('active');
         }
 
+        // --- 初始化邏輯 ---
         if (!sessionId) {
-            // 情況 1: 沒有參數，顯示首頁
             showSection('home');
         } else {
-            // 情況 2: 有參數，開始載入圖片
             showSection('loading');
             loadPhoto(sessionId);
         }
 
-        // --- 功能邏輯 ---
         function loadPhoto(id) {
             const imageUrl = `${SUPABASE_STORAGE_URL}/${id}.jpg`;
             el.txtId.innerText = id;
 
             const tempImg = new Image();
             tempImg.src = imageUrl;
-            
+
             tempImg.onload = () => {
                 el.img.src = imageUrl;
                 el.img.classList.add('loaded');
                 showSection('main');
-                
-                el.btn.onclick = () => downloadImage(imageUrl, `collage-${id}.jpg`);
+
+                el.btnDownload.onclick = () => downloadImage(imageUrl, `collage-${id}.jpg`);
+                el.btnShare.onclick = () => shareImage(id, imageUrl);
             };
 
-            tempImg.onerror = () => {
-                // 情況 3: 圖片不存在 (過期)
-                showSection('error');
-            };
+            tempImg.onerror = () => showSection('error');
         }
 
+        // --- 功能：下載圖片 ---
         async function downloadImage(url, filename) {
+            const spanText = el.btnDownload.querySelector('.btn-text');
+            const originalText = spanText.innerText;
+
             try {
-                el.btn.innerText = "STARTING DOWNLOAD...";
-                const response = await fetch(url);
+                spanText.innerText = "WAIT...";
+                // 這裡 fetch 如果失敗通常是因為 Supabase CORS 沒設定
+                const response = await fetch(url, { mode: 'cors' });
                 const blob = await response.blob();
                 const blobUrl = window.URL.createObjectURL(blob);
-                
+
                 const link = document.createElement('a');
                 link.href = blobUrl;
                 link.download = filename;
@@ -156,12 +198,64 @@
                 link.click();
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(blobUrl);
-                el.btn.innerText = "DOWNLOAD IMAGE";
+
+                spanText.innerText = "DONE!";
+                setTimeout(() => { spanText.innerText = originalText; }, 2000);
             } catch (e) {
-                // 跨域失敗時直接新分頁打開圖片
+                console.warn("Download fetch failed, opening in new tab...", e);
                 window.open(url, '_blank');
+                spanText.innerText = originalText;
+            }
+        }
+
+        // --- 直接分享圖片檔案 ---
+        async function shareImage(id, imageUrl) {
+            const spanText = el.btnShare.querySelector('.btn-text');
+            const originalText = spanText.innerText;
+
+            try {
+                spanText.innerText = "FETCHING...";
+
+                // 1. 下載圖片並轉換為 Blob
+                const response = await fetch(imageUrl);
+                const blob = await response.blob();
+
+                // 2. 將 Blob 轉換為 File 物件
+                const file = new File([blob], `cyber-booth-${id}.jpg`, { type: 'image/jpeg' });
+
+                // 3. 檢查瀏覽器是否支援分享檔案
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Cyber Booth',
+                        text: '這是我在 Cyber Booth 拍攝的合成照片！',
+                    });
+                    spanText.innerText = originalText;
+                } else {
+                    throw new Error("File sharing not supported");
+                }
+            } catch (err) {
+                // --- 備選方案：如果無法分享檔案，則複製連結 ---
+                console.warn("File share failed, falling back to link copy:", err);
+
+                try {
+                    const url = window.location.href;
+                    await navigator.clipboard.writeText(url);
+
+                    spanText.innerText = "LINK COPIED!";
+                    el.btnShare.classList.replace('bg-gray-800', 'bg-green-700');
+
+                    setTimeout(() => {
+                        spanText.innerText = originalText;
+                        el.btnShare.classList.replace('bg-green-700', 'bg-gray-800');
+                    }, 2000);
+                } catch (clipboardErr) {
+                    spanText.innerText = "FAILED";
+                    setTimeout(() => { spanText.innerText = originalText; }, 2000);
+                }
             }
         }
     </script>
 </body>
+
 </html>
