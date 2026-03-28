@@ -51,6 +51,7 @@
 3.  **部署下載頁面**：
     - 修改 `public-viewer/index.html` 中的 `SUPABASE_STORAGE_URL` 為您的專案路徑。
     - 將 `public-viewer` 資料夾內的代碼部署至 **Vercel**。
+    - 修改 `uploader.js` 中的 `VERCEL_DOMAIN` 為您的公開下載網站。
 
 ## 自訂拍貼相框
 

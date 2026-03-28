@@ -14,6 +14,7 @@ async function uploadImage(sessionID, buffer) {
     if (!isCloudConfigured) {
         return `${VERCEL_DOMAIN}deploy-info`;
     }
+    
     try {
         const fileName = `${sessionID}.jpg`;
 

@@ -91,7 +91,7 @@ async function generateFinalCollage(sessionID, photoFilenames) {
             }
             else if (widget.type === 'image') {
                 let imgBuffer;
-                if (widget.content === '{QR_Code}') {
+                if (widget.content === '{QR_CODE}') {
                     imgBuffer = await sharp(qrBuffer).resize(widget.w, widget.h).toBuffer();
                 } else {
                     // 一般圖片 Widget (如 Logo)，轉為 Buffer 並縮放
