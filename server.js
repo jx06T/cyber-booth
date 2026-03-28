@@ -71,7 +71,9 @@ io.on('connection', (socket) => {
         if (selectedPhotos.length >= 4) {
             // All 4 photos are collected
             io.emit('status_update', { message: 'Processing final collage...', kept: 4, state: 1 });
+            console.log("currentSessionID:",currentSessionID)
             console.log('Session complete. List:', selectedPhotos);
+
             try {
                 const result = await generateFinalCollage(currentSessionID, selectedPhotos);
                 io.emit('status_update', {
@@ -80,6 +82,7 @@ io.on('connection', (socket) => {
                     result: result
                 });
             } catch (e) {
+                await systemFullReset()
                 io.emit('status_update', { message: 'Composition Failed', state: 2 });
             }
         } else {
@@ -109,6 +112,7 @@ io.on('connection', (socket) => {
 
     socket.on('user_clicked_finish_early', async () => {
         if (selectedPhotos.length === 0) return;
+        console.log("currentSessionID:",currentSessionID)
 
         console.log(`Finish early requested. Current count: ${selectedPhotos.length}`);
         io.emit('status_update', { message: 'Finishing with current shots...', state: 1 });
@@ -128,7 +132,7 @@ io.on('connection', (socket) => {
                 result: result
             });
         } catch (e) {
-            console.error(e);
+            await systemFullReset()
             io.emit('status_update', { message: 'Composition Failed', state: 2 });
         }
     });

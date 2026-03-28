@@ -113,7 +113,7 @@ async function generateFinalCollage(sessionID, photoFilenames) {
 
         // 5. 先儲存到本地 Session 資料夾
         await finalImage.toFile(finalLocalPath);
-        await finalImage.toFile(`sessions/collage/${sessionID}.jpg`);
+        await finalImage.toFile(`sessions/collages/${sessionID}.jpg`);
         console.log(`[Composer] Saved locally to: ${finalLocalPath}`);
 
         // 6. 取得 Buffer 並呼叫上傳組件
